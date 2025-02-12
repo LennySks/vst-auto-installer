@@ -1,4 +1,7 @@
+import os
+
 import customtkinter
+import glob
 
 
 class App(customtkinter.CTk):
@@ -60,7 +63,40 @@ class App(customtkinter.CTk):
 
     def install_callback(self):
         for directory in self.directories:
-            print(f"Installing VST plugins from {directory}")
+            print(f"Checking VST plugins from {directory}")
+
+            # Ensure directory is valid
+            if not os.path.isdir(directory):
+                print(f"Skipping invalid directory: {directory}")
+                continue
+
+            # Find .exe files recursively
+            files = glob.glob(f"{directory}/**/*.exe", recursive=True)
+
+            # Filter only valid installers
+            valid_installers = [file for file in files if is_installer(file)]
+
+            # Print valid installers
+            for installer in valid_installers:
+                print(f"Found installer: {installer}")
+
+
+def is_installer(filename):
+    filename_lower = filename.lower();
+    # Keywords that indicate it's an installer
+    installer_keywords = ["setup", "install", "update", "vst", "driver"]
+
+    # Keywords that indicate it's a keygen or crack
+    exclude_keywords = ["keygen", "patcher", "crack", "r2r", "serial", "fix", "license", "bobdule"]
+
+    # Get parent folder name (helps detect keygen/crack directories)
+    parent_folder = os.path.basename(os.path.dirname(filename)).lower()
+    # Check if the filename contains installer keywords and does NOT contain exclude keywords
+    if any(keyword in filename_lower for keyword in installer_keywords) and not any(
+            keyword in filename_lower or keyword in parent_folder for keyword in exclude_keywords
+    ):
+        return True  # Likely an installer
+    return False  # Probably not an installer
 
 
 if __name__ == "__main__":
