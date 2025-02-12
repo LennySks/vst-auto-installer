@@ -1,14 +1,13 @@
-import os
-
 import customtkinter
 import glob
+import os
 
 
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
         self.directories = []
-        self.entry_widgets = []
+        self.checkboxes = []  # Store checkboxes
 
         self.title("VST Installer")
         self.geometry("600x600")
@@ -17,14 +16,14 @@ class App(customtkinter.CTk):
         self.label = customtkinter.CTkLabel(self, text="Select the directories where the VST plugins are located")
         self.label.grid(row=0, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
 
-        # Create frame to center input and button
+        # Frame for directory list
         self.list_frame = customtkinter.CTkFrame(self)
         self.list_frame.grid(row=1, column=0, columnspan=2, pady=10, padx=10, sticky="ew")
-        self.list_frame.grid_columnconfigure(0, weight=1)  # Make input expand
+        self.list_frame.grid_columnconfigure(0, weight=1)
 
-        # Add button
+        # Add Directory button
         self.add_button = customtkinter.CTkButton(self, text="+ Add Directory", command=self.button_callback,
-                                                  fg_color="green", hover_color="gray", width=30)
+                                                  fg_color="green")
         self.add_button.grid(row=2, column=0, padx=5, pady=5)
 
         # Install button
@@ -38,22 +37,15 @@ class App(customtkinter.CTk):
             self.add_directory_entry(filename)
 
     def add_directory_entry(self, directory):
-        row = len(self.directories)  # Get next row index
-
-        # Create a read-only entry field
+        row = len(self.directories)
         entry = customtkinter.CTkEntry(self.list_frame, width=10)
         entry.insert(0, directory)
-        entry.configure(state="disabled")  # Make it read-only
+        entry.configure(state="disabled")
         entry.grid(row=row, column=0, padx=5, pady=2, sticky="ew")
 
-        # Create a remove button
         remove_button = customtkinter.CTkButton(self.list_frame, text="X", fg_color="red",
-                                                hover_color="gray", width=30,
                                                 command=lambda: self.remove_directory(directory, entry, remove_button))
         remove_button.grid(row=row, column=1, padx=5, pady=2)
-
-        # Store entry widgets for deletion
-        self.entry_widgets.append((entry, remove_button))
 
     def remove_directory(self, directory, entry, button):
         if directory in self.directories:
@@ -61,42 +53,56 @@ class App(customtkinter.CTk):
             entry.destroy()
             button.destroy()
 
+    def is_installer(self, filename):
+        """Filter only valid installers."""
+        filename_lower = filename.lower()
+        installer_keywords = ["setup", "install", "update", "vst"]
+        exclude_keywords = ["keygen", "patcher", "crack", "r2r", "serial", "fix", "license"]
+
+        parent_folder = os.path.basename(os.path.dirname(filename)).lower()
+
+        if any(keyword in filename_lower for keyword in installer_keywords) and not any(
+                keyword in filename_lower or keyword in parent_folder for keyword in exclude_keywords
+        ):
+            return True
+        return False
+
     def install_callback(self):
+        found_installers = []
         for directory in self.directories:
-            print(f"Checking VST plugins from {directory}")
+            if os.path.isdir(directory):
+                files = glob.glob(f"{directory}/**/*.exe", recursive=True)
+                valid_installers = [file for file in files if self.is_installer(file)]
+                found_installers.extend(valid_installers)
 
-            # Ensure directory is valid
-            if not os.path.isdir(directory):
-                print(f"Skipping invalid directory: {directory}")
-                continue
+        if found_installers:
+            self.show_installer_selection(found_installers)
 
-            # Find .exe files recursively
-            files = glob.glob(f"{directory}/**/*.exe", recursive=True)
+    def show_installer_selection(self, installers):
+        """Open a new window to let the user select installers."""
+        self.checkbox_window = customtkinter.CTkToplevel(self)
+        self.checkbox_window.title("Select Installers")
+        self.checkbox_window.geometry("500x500")
 
-            # Filter only valid installers
-            valid_installers = [file for file in files if is_installer(file)]
+        self.checkbox_frame = customtkinter.CTkFrame(self.checkbox_window)
+        self.checkbox_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-            # Print valid installers
-            for installer in valid_installers:
-                print(f"Found installer: {installer}")
+        self.checkboxes = []
+        for installer in installers:
+            var = customtkinter.BooleanVar()
+            checkbox = customtkinter.CTkCheckBox(self.checkbox_frame, text=os.path.basename(installer), variable=var)
+            checkbox.pack(anchor="w", padx=5, pady=2)
+            self.checkboxes.append((var, installer))
 
+        install_button = customtkinter.CTkButton(self.checkbox_window, text="Install Selected",
+                                                 command=self.process_selected_installers)
+        install_button.pack(pady=10)
 
-def is_installer(filename):
-    filename_lower = filename.lower();
-    # Keywords that indicate it's an installer
-    installer_keywords = ["setup", "install", "update", "vst", "driver"]
-
-    # Keywords that indicate it's a keygen or crack
-    exclude_keywords = ["keygen", "patcher", "crack", "r2r", "serial", "fix", "license", "bobdule"]
-
-    # Get parent folder name (helps detect keygen/crack directories)
-    parent_folder = os.path.basename(os.path.dirname(filename)).lower()
-    # Check if the filename contains installer keywords and does NOT contain exclude keywords
-    if any(keyword in filename_lower for keyword in installer_keywords) and not any(
-            keyword in filename_lower or keyword in parent_folder for keyword in exclude_keywords
-    ):
-        return True  # Likely an installer
-    return False  # Probably not an installer
+    def process_selected_installers(self):
+        """Get selected installers and print them."""
+        selected_installers = [installer for var, installer in self.checkboxes if var.get()]
+        print("Selected installers:", selected_installers)
+        # TODO: For every installer, run it and use pyautogui to automate process (Check chosen format vst2, vst3 ... )
 
 
 if __name__ == "__main__":
