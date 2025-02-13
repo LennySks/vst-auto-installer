@@ -1,3 +1,4 @@
 # generate a .gitignore file for python
 .venv
 .idea
+__pycache__

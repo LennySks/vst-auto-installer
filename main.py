@@ -1,6 +1,13 @@
+import threading
+import time
+import sys
 import customtkinter
 import glob
 import os
+
+import pyautogui
+
+from install_vst import install_vst
 
 
 class App(customtkinter.CTk):
@@ -30,6 +37,7 @@ class App(customtkinter.CTk):
         self.install_button = customtkinter.CTkButton(self, text="Install", command=self.install_callback)
         self.install_button.grid(row=3, column=0, padx=10, pady=10, columnspan=2, sticky="ew")
 
+        # self.start_mouse_tracking()
     def button_callback(self):
         filename = customtkinter.filedialog.askdirectory()
         if filename and filename not in self.directories:
@@ -103,9 +111,28 @@ class App(customtkinter.CTk):
         selected_installers = [installer for var, installer in self.checkboxes if var.get()]
         print("Selected installers:", selected_installers)
         # TODO: For every installer, run it and use pyautogui to automate process (Check chosen format vst2, vst3 ... )
+        # use install_vst.py here
+        for selected in selected_installers:
+            install_vst(selected)
 
+    # def start_mouse_tracking(self):
+    #     """Starts a thread that continuously prints mouse position to the CLI."""
+    #     def track_mouse():
+    #         print("Move your mouse around. Press CTRL+C to stop.\n")
+    #         try:
+    #             while True:
+    #                 x, y = pyautogui.position()
+    #                 sys.stdout.write(f"\rMouse Position: ({x}, {y})   ")
+    #                 sys.stdout.flush()
+    #                 time.sleep(0.1)  # Update every 100ms
+    #         except KeyboardInterrupt:
+    #             print("\nMouse tracking stopped.")
+    #
+    #     thread = threading.Thread(target=track_mouse, daemon=True)
+    #     thread.start()
 
 if __name__ == "__main__":
     customtkinter.set_appearance_mode("dark")
+    customtkinter.set_default_color_theme("green")
     app = App()
     app.mainloop()
